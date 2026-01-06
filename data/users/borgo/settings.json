@@ -1,0 +1,10 @@
+{
+  "username": "borgo",
+  "theme": "cyber",
+  "show_thinking": true,
+  "auto_browse": true,
+  "agentic_mode": false,
+  "markdown_enabled": true,
+  "stream_output": true,
+  "memory_enabled": true
+}

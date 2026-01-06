@@ -1,0 +1,32 @@
+# Borgo-AI Dependencies
+# Optimized for RTX 3060 Ti (8GB VRAM) + 16GB RAM
+
+# Core CLI
+typer[all]>=0.9.0
+rich>=13.0.0
+
+# LLM & Embeddings
+requests>=2.31.0
+
+# Vector Store (CPU version - GPU optional)
+faiss-cpu>=1.7.4
+numpy>=1.24.0
+
+# Web Scraping
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Document Processing
+pypdf>=3.0.0
+python-docx>=0.8.11
+chardet>=5.0.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Optional: GPU acceleration for FAISS (uncomment if desired)
+# faiss-gpu>=1.7.4
+
+# Optional: For better web parsing
+# html2text>=2020.1.16
+# trafilatura>=1.6.0
