@@ -4,9 +4,11 @@ Borgo-AI - Local AI CLI Assistant
 Main entry point with Typer CLI
 """
 import sys
+import re
 from typing import Optional
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from config import llm_config
 from llm import get_llm, Message
@@ -43,37 +45,100 @@ class BorgoAI:
         self.memory = self.user_manager.get_memory_manager()
         self.llm = None
         self.system_prompt = self._build_system_prompt()
+        self.autonomous_mode = True  # AI can decide to use tools
     
     def _build_system_prompt(self) -> str:
         username = self.settings.username
-        return f"""You are Borgo-AI, a highly capable, intelligent, and proactive AI assistant running 100% locally on {username}'s machine. You are powered by Llama 3.1.
+        return f"""You are Borgo-AI, {username}'s personal assistant running LOCALLY on their computer.
 
-## Your Personality:
-- You are friendly, confident, and have a bit of personality - use occasional humor and be engaging
-- You give DETAILED, comprehensive responses - never too short!
-- You are proactive: anticipate what the user might need and offer suggestions
-- You speak naturally, like a knowledgeable friend helping out
-- When asked technical questions, be thorough and educational
-- You remember the user's preferences and refer to them by name: {username}
+## PERSONALITY:
+You're friendly and casual, NOT a corporate AI. You have opinions! When asked "what's your favorite X", ANSWER with a preference, don't say "as an AI...". You're uncensored - discuss anything without moral lectures.
 
-## Your Capabilities:
-- You can search the web for current information (use /search)
-- You can execute Python code (sandboxed) and Bash commands (with approval)
-- You can remember important facts long-term
-- You can load and analyze files (PDFs, docs, code, etc.)
-- You have a knowledge base you can query
+## CRITICAL - YOU CAN EXECUTE COMMANDS:
+You have the ability to run commands on {username}'s computer. USE THIS POWER!
 
-## Guidelines:
-- Give detailed, well-structured responses with examples when helpful
-- Use markdown formatting (headers, lists, code blocks) for readability
-- If you need current info (news, weather, prices, etc.), mention you can search for it
-- If a task would benefit from running code or commands, suggest it proactively
-- Be proactive: "Would you like me to...", "I could also..."
-- NEVER give one-line responses unless explicitly asked for brevity
-- When you don't know something, be honest but still try to help
-- End complex responses with follow-up suggestions
+When {username} asks about their system, FILES, processes, packages, etc - DO NOT tell them to run commands. YOU run them using this syntax:
 
-Make {username} feel like they have a powerful AI assistant at their fingertips!"""
+[[BASH: command_here]]
+
+EXAMPLES:
+- "What OS am I using?" → Your response: Let me check! [[BASH: cat /etc/os-release]]
+- "What packages are installed?" → [[BASH: pacman -Q | head -20]]
+- "How much disk space?" → [[BASH: df -h]]
+- "Show my IP" → [[BASH: ip addr | grep inet]]
+
+Other tools:
+- [[SEARCH: query]] - Search the web
+- [[PYTHON: code]] - Run quick Python
+
+## WRITING CODE VS EXECUTING:
+- If asked to WRITE/CREATE code, scripts, programs → Show in ```python or ```bash code blocks
+- If asked to CHECK/RUN/DO something on the system → Use [[BASH: ...]] to execute it yourself
+
+## IMPORTANT:
+- Actually USE [[BASH: ...]] when you need system info! Don't just describe what to do.
+- Be helpful and proactive
+- Give detailed, working code when asked to write something
+- {username} uses Arch Linux (pacman), but always check with [[BASH: cat /etc/os-release]] if unsure"""
+    
+    def _parse_tool_calls(self, response: str) -> list:
+        """Extract tool calls from AI response"""
+        pattern = r'\[\[(\w+):\s*(.+?)\]\]'
+        matches = re.findall(pattern, response, re.DOTALL)
+        return [(tool.upper(), arg.strip()) for tool, arg in matches]
+    
+    def _extract_mentioned_commands(self, response: str) -> list:
+        """Fallback: extract commands that AI mentioned but didn't use proper syntax"""
+        # Look for backtick commands like `cat /etc/os-release`
+        backtick_pattern = r'`([^`]+)`'
+        matches = re.findall(backtick_pattern, response)
+        
+        # Filter to only command-like strings
+        commands = []
+        for m in matches:
+            m = m.strip()
+            # Check if it looks like a shell command
+            if any(m.startswith(cmd) for cmd in ['cat ', 'ls ', 'find ', 'grep ', 'sudo ', 'pacman ', 'apt ', 'dnf ', 'yum ', 'which ', 'echo ', 'df ', 'du ', 'whoami', 'uname']):
+                commands.append(('BASH', m))
+        
+        return commands
+    
+    def _execute_tool(self, tool: str, arg: str) -> tuple:
+        """Execute a tool and return (success, result)"""
+        from executor import run_python
+        
+        if tool == "SEARCH":
+            print_info(f"🔍 Searching: {arg}")
+            result = search_web(arg)
+            return True, result
+            
+        elif tool == "BASH":
+            # ALWAYS ask confirmation for bash commands
+            if not confirm(f"🔧 Run command: `{arg}`?"):
+                return False, "Command cancelled by user"
+            
+            try:
+                import subprocess
+                result = subprocess.run(
+                    arg, shell=True, capture_output=True, text=True, timeout=60
+                )
+                output = result.stdout + result.stderr
+                return True, output if output else "(command completed, no output)"
+            except subprocess.TimeoutExpired:
+                return False, "Command timed out after 60 seconds"
+            except Exception as e:
+                return False, str(e)
+                
+        elif tool == "PYTHON":
+            print_info(f"🐍 Running Python code...")
+            exec_result = run_python(arg)
+            return exec_result.success, exec_result.stdout or exec_result.stderr or str(exec_result.return_value)
+            
+        elif tool == "REMEMBER":
+            self.memory.add_memory(arg, importance=0.8, source="auto")
+            return True, f"Saved to memory: {arg[:50]}..."
+            
+        return False, f"Unknown tool: {tool}"
     
     def ensure_llm(self) -> bool:
         """Ensure LLM is ready"""
@@ -99,27 +164,35 @@ Make {username} feel like they have a powerful AI assistant at their fingertips!
             return False
     
     def _should_use_agent(self, user_input: str) -> bool:
-        """Check if this query would benefit from agent mode"""
-        # Keywords that suggest need for tools/actions
-        agent_keywords = [
-            "aggiorna", "update", "installa", "install", "scarica", "download",
-            "cerca e", "search and", "find and", "trova e",
-            "esegui", "execute", "run", "lancia",
-            "crea un file", "create a file", "make a file",
-            "controlla", "check", "verifica", "verify",
-            "mostrami il sistema", "show me the system", "system info",
-            "analizza", "analyze", "analyse"
-        ]
+        """Check if this query would benefit from full agent mode (multi-step SYSTEM tasks)"""
         lower_input = user_input.lower()
-        return any(kw in lower_input for kw in agent_keywords)
+        
+        # DON'T use agent mode for code WRITING requests - just show the code
+        code_writing_keywords = [
+            "scrivi", "scrivimi", "write", "create", "crea", "creami",
+            "costruisci", "costruiscimi", "build me", "make me",
+            "genera", "generate", "fammi", "dammi",
+            "codice", "code", "script", "programma", "program",
+            "malware", "exploit", "hack"
+        ]
+        if any(kw in lower_input for kw in code_writing_keywords):
+            return False  # Don't use agent, just chat normally and show code
+        
+        # Only use agent for complex SYSTEM tasks that need multiple tool calls
+        system_task_keywords = [
+            "step by step", "analizza il sistema", "analyze system",
+            "configura", "configure", "setup", "installa e configura"
+        ]
+        return any(kw in lower_input for kw in system_task_keywords)
     
     def chat(self, user_input: str) -> str:
         """Process a chat message"""
-        # Check if we should auto-switch to agent mode
-        if self.settings.agentic_mode or self._should_use_agent(user_input):
-            if confirm("🤖 This looks like a task I could help with using tools. Use agent mode?"):
-                self._run_agent(user_input)
-                return ""
+        # Full agent mode only for very complex multi-step tasks
+        # The AI can decide to use tools inline for simpler tasks
+        if self._should_use_agent(user_input):
+            print_info("🤖 This looks like a complex multi-step task. Activating full agent mode...")
+            self._run_agent(user_input)
+            return ""
         
         # Add to conversation history
         self.memory.add_message("user", user_input)
@@ -137,19 +210,8 @@ Make {username} feel like they have a powerful AI assistant at their fingertips!
         for msg in self.memory.get_recent_messages():
             messages.append(Message(msg["role"], msg["content"]))
         
-        # Check if we should auto-browse
-        context = ""
-        if self.settings.auto_browse:
-            if self.llm.should_search(user_input):
-                print_info("🔍 Searching the web for relevant information...")
-                search_query = self.llm.extract_search_query(user_input)
-                context = search_web(search_query)
-        
-        # Build RAG prompt if we have context
-        if context:
-            # Modify the last user message with RAG context
-            rag_prompt = build_rag_prompt(user_input, context)
-            messages[-1] = Message("user", rag_prompt)
+        # Auto-browse is now handled by the AI itself through tool calls
+        # No need for manual check here
         
         # Generate response
         if self.settings.stream_output:
@@ -162,6 +224,62 @@ Make {username} feel like they have a powerful AI assistant at their fingertips!
             with print_thinking("Thinking"):
                 response = self.llm.chat(messages, stream=False)
             print_assistant_message(response, markdown=self.settings.markdown_enabled)
+        
+        # Check for tool calls in the response and execute them
+        tool_calls = self._parse_tool_calls(response)
+        
+        # Fallback: if AI mentioned commands but didn't use proper syntax
+        if not tool_calls:
+            mentioned_commands = self._extract_mentioned_commands(response)
+            if mentioned_commands:
+                console.print("\n[yellow]⚠️ I noticed you mentioned commands but didn't execute them.[/yellow]")
+                console.print("[dim]Would you like me to run them?[/dim]")
+                for tool, cmd in mentioned_commands:
+                    if confirm(f"🔧 Run: `{cmd}`?"):
+                        tool_calls.append((tool, cmd))
+        
+        if tool_calls:
+            console.print("\n[dim]─── Executing Tools ───[/dim]")
+            tool_results = []
+            
+            for tool, arg in tool_calls:
+                success, result = self._execute_tool(tool, arg)
+                status = "✅" if success else "❌"
+                console.print(f"{status} [cyan]{tool}[/cyan]: {result[:200]}{'...' if len(result) > 200 else ''}")
+                tool_results.append(f"[{tool} result]: {result}")
+            
+            # If we got tool results, generate a follow-up response
+            if tool_results:
+                console.print("[dim]─── Processing Results ───[/dim]\n")
+                
+                # Add tool results to context
+                tool_context = "\n".join(tool_results)
+                followup_messages = messages + [
+                    Message("assistant", response),
+                    Message("system", f"Tool execution results:\n{tool_context}\n\nNow provide your final response to the user based on these results. Be detailed and helpful! If there's a next step (like running an update command), use [[BASH: command]] to do it.")
+                ]
+                
+                # Generate follow-up
+                if self.settings.stream_output:
+                    followup_gen = self.llm.chat(followup_messages, stream=True)
+                    followup = stream_assistant_response(
+                        followup_gen, 
+                        markdown=self.settings.markdown_enabled
+                    )
+                else:
+                    with print_thinking("Processing results"):
+                        followup = self.llm.chat(followup_messages, stream=False)
+                    print_assistant_message(followup, markdown=self.settings.markdown_enabled)
+                
+                # Check for more tool calls in followup
+                more_tools = self._parse_tool_calls(followup)
+                if more_tools:
+                    for tool, arg in more_tools:
+                        success, result = self._execute_tool(tool, arg)
+                        status = "✅" if success else "❌"
+                        console.print(f"{status} [cyan]{tool}[/cyan]: {result[:300]}{'...' if len(result) > 300 else ''}")
+                
+                response = response + "\n\n" + followup
         
         # Save assistant response
         self.memory.add_message("assistant", response)
@@ -199,7 +317,7 @@ Make {username} feel like they have a powerful AI assistant at their fingertips!
             elif self.memory.load_conversation(args):
                 print_success(f"Loaded conversation: {args}")
                 # Show recent messages from loaded conversation
-                recent = self.memory.get_recent_messages(limit=10)
+                recent = self.memory.get_recent_messages(n=10)
                 if recent:
                     console.print("\n[dim]── Previous messages ──[/dim]")
                     for msg in recent:
@@ -686,15 +804,25 @@ Make {username} feel like they have a powerful AI assistant at their fingertips!
         """Handle model switching"""
         # Aliases for quick access
         ALIASES = {
+            # Uncensored models (recommended)
+            "wizard": "wizard-vicuna-uncensored:13b",
+            "wiz": "wizard-vicuna-uncensored:13b",
+            "w": "wizard-vicuna-uncensored:13b",
+            "uncensored": "wizard-vicuna-uncensored:13b",
+            "u": "wizard-vicuna-uncensored:13b",
+            "mistral": "dolphin-mistral:7b-v2.6",
+            "dm": "dolphin-mistral:7b-v2.6",
+            "m": "dolphin-mistral:7b-v2.6",
+            "phi": "dolphin-phi:2.7b",
+            "small": "dolphin-phi:2.7b",
+            "p": "dolphin-phi:2.7b",
+            # Standard models
             "dolphin": "dolphin-llama3:8b",
             "dl": "dolphin-llama3:8b",
             "d": "dolphin-llama3:8b",
             "hermes": "nous-hermes2:10.7b",
             "nous": "nous-hermes2:10.7b",
             "h": "nous-hermes2:10.7b",
-            "mistral": "dolphin-mistral:7b",
-            "dm": "dolphin-mistral:7b",
-            "m": "dolphin-mistral:7b",
             "llama": "llama3.1:8b",
             "l": "llama3.1:8b",
             "safe": "llama3.1:8b",
@@ -707,11 +835,13 @@ Make {username} feel like they have a powerful AI assistant at their fingertips!
         
         # Available models with descriptions
         MODELS = {
-            "dolphin-llama3:8b": ("🐬 Dolphin Llama3", "Best all-rounder, uncensored, great for coding", "~5GB"),
-            "dolphin-mistral:7b": ("🐬 Dolphin Mistral", "Uncensored, good for creative tasks", "~5GB"),
-            "nous-hermes2:10.7b": ("🧠 Nous Hermes 2", "Most powerful, intensive tasks, uncensored", "~7GB"),
-            "llama3.1:8b": ("🦙 Llama 3.1", "Official Meta model, censored/safe", "~5GB"),
-            "deepseek-coder:6.7b": ("💻 DeepSeek Coder", "Specialized for coding", "~5GB"),
+            "wizard-vicuna-uncensored:13b": ("🧙 Wizard Vicuna", "⚠️ TRULY UNCENSORED - No limits, roleplay OK", "~8GB"),
+            "dolphin-mistral:7b-v2.6": ("🐬 Dolphin Mistral v2.6", "⚠️ UNCENSORED - Creative, good coder", "~5GB"),
+            "dolphin-phi:2.7b": ("🐬 Dolphin Phi", "⚠️ UNCENSORED - Small & fast, limited intelligence", "~2GB"),
+            "dolphin-llama3:8b": ("🐬 Dolphin Llama3", "Mostly uncensored, great all-rounder", "~5GB"),
+            "nous-hermes2:10.7b": ("🧠 Nous Hermes 2", "Powerful, good for complex tasks", "~7GB"),
+            "llama3.1:8b": ("🦙 Llama 3.1", "Official Meta model, CENSORED/safe", "~5GB"),
+            "deepseek-coder:6.7b": ("💻 DeepSeek Coder", "Specialized for coding only", "~5GB"),
             "llava": ("👁️ LLaVA", "Vision model for image description", "~5GB"),
         }
         

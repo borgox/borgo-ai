@@ -26,24 +26,24 @@ class LLMConfig:
     LLM Configuration - optimized for RTX 3060 Ti (8GB VRAM)
     
     Available Models (use /model command to switch):
-    ┌─────────────────────┬────────┬─────────────────────────────────────┐
-    │ Model               │ VRAM   │ Best For                            │
-    ├─────────────────────┼────────┼─────────────────────────────────────┤
-    │ dolphin-llama3:8b   │ ~5GB   │ ⭐ ALL-ROUNDER: coding + chat       │
-    │ dolphin-mistral:7b  │ ~5GB   │ Creative, roleplay, uncensored      │
-    │ nous-hermes2:10.7b  │ ~7GB   │ 🧠 MOST POWERFUL: complex tasks     │
-    │ deepseek-coder:6.7b │ ~5GB   │ 💻 Specialized coding               │
-    │ llama3.1:8b         │ ~5GB   │ Safe/censored mode                  │
-    │ llava               │ ~5GB   │ 👁️ Vision/image description        │
-    └─────────────────────┴────────┴─────────────────────────────────────┘
+    ┌─────────────────────────────────┬────────┬─────────────────────────────────────┐
+    │ Model                           │ VRAM   │ Best For                            │
+    ├─────────────────────────────────┼────────┼─────────────────────────────────────┤
+    │ wizard-vicuna-uncensored:13b    │ ~8GB   │ ⭐ TRULY UNCENSORED - no limits     │
+    │ dolphin-mistral:7b-v2.6         │ ~5GB   │ Uncensored + great coder            │
+    │ dolphin-llama3:8b               │ ~5GB   │ Good all-rounder                    │
+    │ nous-hermes2:10.7b              │ ~7GB   │ 🧠 Complex tasks                    │
+    │ deepseek-coder:6.7b             │ ~5GB   │ 💻 Specialized coding               │
+    │ llava                           │ ~5GB   │ 👁️ Vision/image description        │
+    └─────────────────────────────────┴────────┴─────────────────────────────────────┘
     """
     model: str = "dolphin-llama3:8b"  # Default: best all-rounder
     base_url: str = "http://localhost:11434"
-    temperature: float = 0.7  # 0.7 per coding, 0.8+ per creatività
-    max_tokens: int = 2048
+    temperature: float = 0.8  # Slightly higher for more creative/natural responses
+    max_tokens: int = 4096  # Longer responses
     context_window: int = 8192
     top_p: float = 0.9
-    repeat_penalty: float = 1.1
+    repeat_penalty: float = 1.05  # Lower to avoid repetitive refusals
 
 
 @dataclass

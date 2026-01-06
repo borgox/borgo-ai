@@ -35,7 +35,7 @@ class OllamaLLM:
                 url,
                 json=data,
                 stream=stream,
-                timeout=120
+                timeout=600  # 10 minutes for large models
             )
             response.raise_for_status()
             return response
@@ -45,7 +45,7 @@ class OllamaLLM:
                 "Make sure Ollama is running: `ollama serve`"
             )
         except requests.exceptions.Timeout:
-            raise TimeoutError("Request to Ollama timed out")
+            raise TimeoutError("Request to Ollama timed out (10min limit)")
     
     def check_model_available(self) -> bool:
         """Check if the model is available locally"""

@@ -169,10 +169,8 @@ def stream_assistant_response(tokens: Generator[str, None, None], markdown: bool
     
     console.print()  # Newline at end
     
-    # If markdown enabled and response contains code or formatting, reprint formatted
-    if markdown and has_markdown(full_response):
-        console.print("\n[dim]─── Formatted ───[/dim]")
-        console.print(Markdown(full_response, code_theme="monokai"))
+    # Don't reprint - the streaming output is already shown
+    # User can toggle markdown with /set markdown false if they prefer raw
     
     return full_response
 
@@ -208,14 +206,14 @@ def print_thinking(message: str = "Thinking"):
 def print_error(message: str):
     """Print error message"""
     # Escape Rich markup characters to prevent crashes
-    safe_message = message.replace("[", "\\[").replace("]", "\\]")
+    safe_message = str(message).replace("[", r"\[").replace("]", r"\]")
     console.print(f"\n[bold red]❌ Error:[/bold red] {safe_message}\n")
 
 
 def print_success(message: str):
     """Print success message"""
     # Escape Rich markup characters
-    safe_message = message.replace("[", "\\[").replace("]", "\\]")
+    safe_message = str(message).replace("[", r"\[").replace("]", r"\]")
     console.print(f"\n[bold green]✓[/bold green] {safe_message}\n")
 
 
