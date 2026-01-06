@@ -8,11 +8,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-from config import agent_config
-from llm import get_llm, Message
-from browser import search_web, fetch_url, search_google
-from memory import get_memory_manager
-from rag import query_knowledge, add_knowledge
+from .config import agent_config
+from .llm import get_llm, Message
+from .browser import search_web, fetch_url, search_google
+from .memory import get_memory_manager
+from .rag import query_knowledge, add_knowledge
 
 
 class ToolType(Enum):
@@ -225,7 +225,7 @@ class AgentTools:
     def _run_python(self, code: str) -> str:
         """Execute Python code safely"""
         try:
-            from executor import run_python
+            from .executor import run_python
             result = run_python(code)
             
             if result.success:
@@ -243,7 +243,7 @@ class AgentTools:
     def _view_image(self, filepath: str) -> str:
         """Get information about an image"""
         try:
-            from images import get_image_info
+            from .images import get_image_info
             info = get_image_info(filepath)
             
             if info.success:
@@ -258,7 +258,7 @@ class AgentTools:
     def _summarize(self, text: str) -> str:
         """Summarize text"""
         try:
-            from summarizer import summarize_text
+            from .summarizer import summarize_text
             result = summarize_text(text)
             return result.summary
         except ImportError:
@@ -269,8 +269,8 @@ class AgentTools:
     def _run_bash(self, command: str) -> str:
         """Execute bash command (with user approval)"""
         try:
-            from executor import run_bash, check_bash_safety
-            from ui import confirm, console
+            from .executor import run_bash, check_bash_safety
+            from .ui import confirm, console
             
             # Check safety first
             is_safe, error = check_bash_safety(command)
@@ -312,7 +312,7 @@ class AgentTools:
     def _load_file(self, filepath: str) -> str:
         """Load file content"""
         try:
-            from files import load_file
+            from .files import load_file
             doc = load_file(filepath)
             
             if doc.success:

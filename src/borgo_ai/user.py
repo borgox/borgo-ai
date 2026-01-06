@@ -7,8 +7,8 @@ from typing import List, Dict, Optional
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
-from config import USERS_DIR, UserSettings
-from memory import MemoryManager, get_memory_manager
+from .config import USERS_DIR, UserSettings
+from .memory import MemoryManager, get_memory_manager
 
 
 class UserManager:

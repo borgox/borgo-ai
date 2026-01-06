@@ -12,7 +12,7 @@ import time
 import pickle
 from pathlib import Path
 
-from config import browser_config, DATA_DIR
+from .config import browser_config, DATA_DIR
 
 
 # Cookies storage path

@@ -6,7 +6,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 import json
 
-from llm import get_llm, Message
+from .llm import get_llm, Message
 
 
 @dataclass

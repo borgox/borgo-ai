@@ -9,7 +9,7 @@ from typing import List, Optional
 from pathlib import Path
 import pickle
 
-from config import embedding_config, llm_config
+from .config import embedding_config, llm_config
 
 
 class OllamaEmbeddings:

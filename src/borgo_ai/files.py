@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 import mimetypes
 
-from config import KNOWLEDGE_DIR
+from .config import KNOWLEDGE_DIR
 
 
 @dataclass

@@ -6,7 +6,7 @@ import requests
 import json
 from typing import Generator, Optional, List, Dict, Any
 from dataclasses import dataclass
-from config import llm_config
+from .config import llm_config
 
 
 @dataclass

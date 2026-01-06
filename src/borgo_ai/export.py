@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import re
 
-from config import USERS_DIR
+from .config import USERS_DIR
 
 
 class HTMLExporter:
@@ -364,7 +364,7 @@ class HTMLExporter:
         output_dir: str
     ) -> List[str]:
         """Export all conversations for a user"""
-        from memory import get_memory_manager
+        from .memory import get_memory_manager
         
         mm = get_memory_manager(username)
         conversations = mm.list_conversations()

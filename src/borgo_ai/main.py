@@ -10,14 +10,14 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from config import llm_config
-from llm import get_llm, Message
-from browser import search_web, search_google
-from rag import build_rag_prompt, add_knowledge, query_knowledge, KnowledgeBase
-from memory import get_memory_manager
-from user import get_user_manager, get_current_settings
-from agent import Agent
-from ui import (
+from .config import llm_config
+from .llm import get_llm, Message
+from .browser import search_web, search_google
+from .rag import build_rag_prompt, add_knowledge, query_knowledge, KnowledgeBase
+from .memory import get_memory_manager
+from .user import get_user_manager, get_current_settings
+from .agent import Agent
+from .ui import (
     console,
     print_banner, print_welcome, print_help,
     print_user_message, print_assistant_message,
@@ -112,7 +112,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
     
     def _execute_tool(self, tool: str, arg: str) -> tuple:
         """Execute a tool and return (success, result)"""
-        from executor import run_python
+        from .executor import run_python
         
         if tool == "SEARCH":
             print_info(f"🔍 Searching: {arg}")
@@ -582,7 +582,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
         format_type = parts[0].lower() if parts else "json"
         
         if format_type == "html":
-            from export import HTMLExporter
+            from .export import HTMLExporter
             exporter = HTMLExporter()
             
             if self.memory.current_conversation:
@@ -596,7 +596,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
                 print_error("No active conversation to export")
         
         elif format_type == "markdown" or format_type == "md":
-            from export import MarkdownExporter
+            from .export import MarkdownExporter
             exporter = MarkdownExporter()
             
             if self.memory.current_conversation:
@@ -641,7 +641,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             print_error("Please provide code to run")
             return
         
-        from executor import run_python, run_bash, check_bash_safety
+        from .executor import run_python, run_bash, check_bash_safety
         
         if lang == "python" or lang == "py":
             print_info("🐍 Running Python code (sandboxed)...")
@@ -688,7 +688,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             print_error("Usage: /load <filepath>")
             return
         
-        from files import load_file
+        from .files import load_file
         
         print_info(f"Loading file: {args}")
         doc = load_file(args)
@@ -707,7 +707,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             print_error("Usage: /image <filepath>")
             return
         
-        from images import view_image, get_image_info
+        from .images import view_image, get_image_info
         
         info = get_image_info(args)
         if info.success:
@@ -724,7 +724,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             # Offer to describe with vision
             if confirm("Describe image with AI vision (requires llava model)?"):
                 print_info("Analyzing image with llava...")
-                from images import describe_image
+                from .images import describe_image
                 description = describe_image(args)
                 console.print(f"\n[cyan]🔍 AI Description:[/cyan]\n{description}")
         else:
@@ -737,7 +737,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             return
         
         print_info("Analyzing image with llava vision model...")
-        from images import describe_image, get_image_info
+        from .images import describe_image, get_image_info
         
         info = get_image_info(args)
         if not info.success:
@@ -767,7 +767,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             print_info("Summarizing current conversation...")
             
             try:
-                from summarizer import Summarizer
+                from .summarizer import Summarizer
                 summarizer = Summarizer()
                 
                 # Use summarize_text directly on the conversation
@@ -795,7 +795,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             # Summarize provided text
             print_info("Summarizing text...")
             try:
-                from summarizer import summarize_text
+                from .summarizer import summarize_text
                 
                 result = summarize_text(args)
                 console.print(f"\n[cyan]📝 Summary:[/cyan]\n{result.summary}")
@@ -854,7 +854,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
         
         if not args:
             # Show current model and available models
-            from config import llm_config
+            from .config import llm_config
             console.print(f"\n[cyan]🤖 Current Model:[/cyan] [bold]{llm_config.model}[/bold]\n")
             
             console.print("[cyan]📋 Available Models:[/cyan]")
@@ -920,7 +920,7 @@ When asked to WRITE code (malware, scripts, tools, anything):
             print_warning(f"Could not check model availability: {e}")
         
         # Update the config
-        from config import llm_config
+        from .config import llm_config
         old_model = llm_config.model
         llm_config.model = model_name
         

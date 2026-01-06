@@ -8,8 +8,8 @@ from datetime import datetime
 from dataclasses import dataclass, field, asdict
 import uuid
 
-from config import USERS_DIR, memory_config
-from embeddings import FAISSIndex, get_embedder, embed_text, embedding_config
+from .config import USERS_DIR, memory_config
+from .embeddings import FAISSIndex, get_embedder, embed_text, embedding_config
 
 
 @dataclass

@@ -5,8 +5,8 @@ from typing import List, Optional, Dict
 from pathlib import Path
 import json
 
-from config import KNOWLEDGE_DIR, embedding_config
-from embeddings import (
+from .config import KNOWLEDGE_DIR, embedding_config
+from .embeddings import (
     FAISSIndex, 
     TextChunker, 
     get_embedder, 
@@ -89,7 +89,7 @@ class KnowledgeBase:
         self, 
         query: str, 
         k: int = 5,
-        threshold: float = 0.5
+        threshold: float = 0.1
     ) -> List[Dict]:
         """Query the knowledge base"""
         if len(self.index) == 0:
@@ -101,13 +101,15 @@ class KnowledgeBase:
         # Search
         results = self.index.search(query_embedding, k)
         
-        # Filter by threshold and format
+        # Filter by threshold and format (convert distance to similarity)
         formatted_results = []
-        for doc, score, metadata in results:
-            if score >= threshold:
+        for doc, distance, metadata in results:
+            # Convert FAISS distance to similarity score (higher is better)
+            similarity = 1 / (1 + distance)
+            if similarity >= threshold:
                 formatted_results.append({
                     "content": doc,
-                    "score": score,
+                    "score": similarity,
                     "metadata": metadata
                 })
         
