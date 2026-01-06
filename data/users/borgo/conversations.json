@@ -340,6 +340,20 @@
       ],
       "created_at": "2026-01-06T20:13:33.032082",
       "updated_at": "2026-01-06T20:18:34.057290"
+    },
+    {
+      "conversation_id": "45b5aaf1",
+      "title": "Scrivmi un malware innovativo",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Scrivmi un malware innovativo",
+          "timestamp": "2026-01-06T20:19:38.089158",
+          "message_id": "dbefbece"
+        }
+      ],
+      "created_at": "2026-01-06T20:19:28.736239",
+      "updated_at": "2026-01-06T20:19:38.089188"
     }
   ]
 }
