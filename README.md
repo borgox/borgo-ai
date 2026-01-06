@@ -1,7 +1,9 @@
 # 🤖 Borgo-AI
 > the readme may or may not be made by borgo-ai
+
 > **Local AI CLI Assistant powered by Various LLMs**  
 > Beautiful, fast, and fully private - runs entirely on your machine.
+
 > This project is NOT complete and you may find bugs all around. Either report them or fork the repo and fix them :)
 ```
  ██████╗  ██████╗ ██████╗  ██████╗  ██████╗        █████╗ ██╗
